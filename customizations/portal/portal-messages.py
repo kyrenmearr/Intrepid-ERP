@@ -16,7 +16,7 @@ def get_context(context):
 		filters={
 			"sender": frappe.session.user,
 			"communication_type": "Communication",
-			"communication_medium": "Portal",
+			"communication_medium": "Other",
 		},
 		fields=["name", "subject", "content", "communication_date", "sent_or_received", "sender_full_name"],
 		order_by="communication_date desc",
@@ -50,7 +50,7 @@ def send_message(subject, content):
 
 	comm = frappe.new_doc("Communication")
 	comm.communication_type = "Communication"
-	comm.communication_medium = "Portal"
+	comm.communication_medium = "Other"
 	comm.sent_or_received = "Received"
 	comm.sender = frappe.session.user
 	comm.sender_full_name = full_name
