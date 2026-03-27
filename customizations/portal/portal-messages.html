@@ -1,0 +1,96 @@
+{% extends "templates/web.html" %}
+{% block title %}{{ _("Messages") }}{% endblock %}
+
+{% block page_content %}
+<div class="container" style="max-width: 760px;">
+	<h3 class="mb-4">{{ _("Messages") }}</h3>
+
+	<!-- New Message Form -->
+	<div class="card mb-5">
+		<div class="card-header font-weight-bold">{{ _("Send us a message") }}</div>
+		<div class="card-body">
+			<div id="msg-success" class="alert alert-success hidden" role="alert">
+				{{ _("Message sent! We'll get back to you soon.") }}
+			</div>
+			<div id="msg-error" class="alert alert-danger hidden" role="alert"></div>
+			<div class="form-group">
+				<label for="msg-subject">{{ _("Subject") }}</label>
+				<input type="text" id="msg-subject" class="form-control" placeholder="{{ _('e.g. Quote request, Order question...') }}">
+			</div>
+			<div class="form-group">
+				<label for="msg-content">{{ _("Message") }}</label>
+				<textarea id="msg-content" class="form-control" rows="5" placeholder="{{ _('Type your message here...') }}"></textarea>
+			</div>
+			<button id="btn-send-msg" class="btn btn-primary">
+				{{ _("Send Message") }}
+			</button>
+		</div>
+	</div>
+
+	<!-- Message History -->
+	<h5 class="mb-3">{{ _("Message History") }}</h5>
+	{% if messages %}
+		{% for msg in messages %}
+		<div class="card mb-3 {% if msg.sent_or_received == 'Sent' %}border-left border-primary{% endif %}">
+			<div class="card-body py-3">
+				<div class="d-flex justify-content-between align-items-start mb-1">
+					<strong>{{ msg.subject | e }}</strong>
+					<small class="text-muted ml-3" style="white-space:nowrap;">
+						{{ frappe.utils.format_datetime(msg.communication_date, "d MMM y, h:mm a") if msg.communication_date else "" }}
+					</small>
+				</div>
+				<div class="mb-1" style="font-size:0.82rem; color: #888;">
+					{% if msg.sent_or_received == 'Sent' %}
+						<span class="badge badge-primary">{{ _("Reply from us") }}</span>
+					{% else %}
+						<span class="badge badge-secondary">{{ _("Sent by you") }}</span>
+					{% endif %}
+				</div>
+				<div class="mt-2" style="font-size:0.95rem; white-space:pre-wrap;">{{ msg.content | striptags | e }}</div>
+			</div>
+		</div>
+		{% endfor %}
+	{% else %}
+		<p class="text-muted">{{ _("No messages yet. Use the form above to get in touch.") }}</p>
+	{% endif %}
+</div>
+
+<script>
+frappe.ready(() => {
+	$('#btn-send-msg').on('click', function() {
+		const subject = $('#msg-subject').val().trim();
+		const content = $('#msg-content').val().trim();
+
+		if (!content) {
+			$('#msg-error').text('{{ _("Please enter a message.") }}').removeClass('hidden');
+			return;
+		}
+
+		$('#btn-send-msg').prop('disabled', true).text('{{ _("Sending...") }}');
+		$('#msg-success, #msg-error').addClass('hidden');
+
+		frappe.call({
+			method: 'frappe.www.portal-messages.send_message',
+			args: { subject: subject || '{{ _("Message from Portal") }}', content },
+			callback(r) {
+				if (r.message) {
+					$('#msg-success').removeClass('hidden');
+					$('#msg-subject').val('');
+					$('#msg-content').val('');
+					// Reload to show new message in history
+					setTimeout(() => location.reload(), 1500);
+				} else {
+					$('#msg-error').text('{{ _("Something went wrong. Please try again.") }}').removeClass('hidden');
+				}
+			},
+			error() {
+				$('#msg-error').text('{{ _("Something went wrong. Please try again.") }}').removeClass('hidden');
+			},
+			always() {
+				$('#btn-send-msg').prop('disabled', false).text('{{ _("Send Message") }}');
+			}
+		});
+	});
+});
+</script>
+{% endblock %}
