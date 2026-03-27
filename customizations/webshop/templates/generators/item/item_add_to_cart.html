@@ -36,6 +36,11 @@
 					({{ price_info.formatted_price }} / {{ product_info.uom }})
 				</small>
 			</div>
+			<div id="ctn-quote-notice" class="hidden mt-1">
+				<span class="text-muted" style="font-size:0.9rem;">
+					&#x1F4E6; Carton pricing is available on request &mdash; add to quote and we'll follow up.
+				</span>
+			</div>
 		{% else %}
 			{{ _("UOM") }} : {{ product_info.uom }}
 		{% endif %}
@@ -131,27 +136,32 @@
 		// Track selected UOM — default to PCK if available, else stock UOM
 		let selectedUOM = $('.uom-btn.active').data('uom') || null;
 
-		// On load, fetch price for the default selected UOM
+		// On load, fetch price for the default selected UOM (hide price if CTN)
 		const item_code_init = $('.btn-add-to-cart').data('item-code');
 		if (selectedUOM && item_code_init) {
-			frappe.call({
-				method: 'frappe.client.get_list',
-				args: {
-					doctype: 'Item Price',
-					filters: { item_code: item_code_init, price_list: 'Standard Selling', selling: 1, uom: selectedUOM },
-					fields: ['price_list_rate', 'currency'],
-					limit: 1
-				},
-				callback(r) {
-					if (r.message && r.message.length) {
-						const rate = r.message[0].price_list_rate;
-						const symbol = '₱';
-						const formatted = symbol + ' ' + parseFloat(rate).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-						$('#product-price-display .price-display').text(formatted);
-						$('#product-price-display .price-per-uom').text('(' + formatted + ' / ' + selectedUOM + ')');
+			if (selectedUOM === 'CTN') {
+				$('#product-price-display').addClass('hidden');
+				$('#ctn-quote-notice').removeClass('hidden');
+			} else {
+				frappe.call({
+					method: 'frappe.client.get_list',
+					args: {
+						doctype: 'Item Price',
+						filters: { item_code: item_code_init, price_list: 'Standard Selling', selling: 1, uom: selectedUOM },
+						fields: ['price_list_rate', 'currency'],
+						limit: 1
+					},
+					callback(r) {
+						if (r.message && r.message.length) {
+							const rate = r.message[0].price_list_rate;
+							const symbol = '₱';
+							const formatted = symbol + ' ' + parseFloat(rate).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+							$('#product-price-display .price-display').text(formatted);
+							$('#product-price-display .price-per-uom').text('(' + formatted + ' / ' + selectedUOM + ')');
+						}
 					}
-				}
-			});
+				});
+			}
 		}
 
 		// Track which UOMs have already been added to the quote
@@ -175,6 +185,17 @@
 
 			const item_code = $('.btn-add-to-cart').data('item-code');
 			if (!item_code) return;
+
+			// CTN: hide price, show quote notice
+			if (selectedUOM === 'CTN') {
+				$('#product-price-display').addClass('hidden');
+				$('#ctn-quote-notice').removeClass('hidden');
+				return;
+			}
+
+			// All other UOMs: show price, hide notice
+			$('#product-price-display').removeClass('hidden');
+			$('#ctn-quote-notice').addClass('hidden');
 
 			// Fetch price for selected UOM
 			frappe.call({
